@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "compilerPath": "C:/mingw64/bin/g++.exe",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+            "includePath": ["${workspaceFolder}/src", "${workspaceFolder}/build/_deps/raylib-src/src"],
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-gcc-x64"
+        },
+        {
+            "name": "Linux",
+            "compilerPath": "/usr/bin/g++",
+            "compileCommands": "${workspaceFolder}/build-wsl/compile_commands.json",
+            "includePath": ["${workspaceFolder}/src", "${workspaceFolder}/build-wsl/_deps/raylib-src/src"],
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}

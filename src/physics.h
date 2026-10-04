@@ -50,6 +50,16 @@ struct Arena
     float bottom;
 };
 
+// Sampled before positional correction. Pair normals point A -> B;
+// wall normals point into the arena. No rendering types belong here.
+struct Contact
+{
+    Vec2 position;
+    Vec2 normal;
+};
+
 // Assumes a positive radius and an arena wider/taller than the diameter.
+// Acceleration is pixels/second squared. Optional contacts replace the last step.
 void UpdatePhysics(std::vector<Body>& bodies, const Arena& arena,
-                   float radius, float dt);
+                   float radius, float dt, Vec2 acceleration,
+                   std::vector<Contact>* contacts = nullptr);
