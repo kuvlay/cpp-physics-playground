@@ -16,5 +16,5 @@ FetchContent_Declare(raylib
 )
 FetchContent_MakeAvailable(raylib)
 
-add_executable(collision_playground src/main.cpp)
+add_executable(collision_playground src/main.cpp src/physics.cpp)
 target_link_libraries(collision_playground PRIVATE raylib)
