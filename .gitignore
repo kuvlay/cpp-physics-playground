@@ -1,3 +1,4 @@
 # Generated native Windows and WSL build directories.
 /build/
 /build-*/
+README.md
