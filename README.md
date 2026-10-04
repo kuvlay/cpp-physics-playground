@@ -2,6 +2,10 @@
 
 An interactive 2D simulation built with **C++17, raylib 5.5, and CMake**. Spawn circles, toggle gravity, and inspect how velocity and contact normals change as objects collide inside a bounded arena.
 
+**[Play the browser demo](https://aarish-io.github.io/cpp-physics-playground/)** · [Source code](https://github.com/aarish-io/cpp-physics-playground)
+
+The browser demo runs the same C++ physics code through WebAssembly. Use a desktop browser with a keyboard and mouse; no download or account is needed.
+
 The project implements its own circle collision detection and response. raylib provides the window, input, and rendering; the physics code runs independently and can be tested without opening a window.
 
 ## Features
@@ -91,6 +95,24 @@ For each circle pair, a squared-distance test detects contact. Overlapping circl
 | `src/physics.cpp` | Integration, wall handling, and circle collision response |
 | `tests/physics_checks.cpp` | Standalone physics assertions and stress checks |
 | `CMakeLists.txt` | C++17 build and pinned raylib dependency |
+| `web/shell.html` | Browser page and WebAssembly loading state |
+| `.github/workflows/deploy-demo.yml` | Physics checks, browser build, and GitHub Pages deployment |
+
+## Browser build and deployment
+
+Install and activate [Emscripten](https://emscripten.org/docs/getting_started/downloads.html) 3.1.74, then run from a terminal with its environment loaded:
+
+```sh
+emcmake cmake -S . -B build-web -DPLATFORM=Web -DCMAKE_BUILD_TYPE=Release
+cmake --build build-web --parallel 2
+python -m http.server 8000 --directory build-web/site
+```
+
+Open `http://localhost:8000`; opening the HTML file directly does not serve the WebAssembly module correctly. Deploy the complete `build-web/site` directory, including the HTML, JavaScript, and `.wasm` files.
+
+GitHub Actions runs the physics checks, builds with the pinned Emscripten version, and deploys to GitHub Pages on pushes to `main`. The repository's Pages source must be set to **GitHub Actions**. No backend or API keys are needed.
+
+Desktop builds call `UpdateDrawFrame` from the normal loop. Browser builds register that same function with Emscripten so the browser can schedule frames without being blocked by an infinite loop. The fixed physics timestep remains unchanged. Close the browser tab to exit the web demo.
 
 ## Tests
 

@@ -5,6 +5,10 @@
 #include <cmath>
 #include <iterator>
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/emscripten.h>
+#endif
+
 namespace
 {
 constexpr float radius = 25.0f;
@@ -60,124 +64,129 @@ void DrawArrow(Vec2 origin, Vec2 displacement, Color color)
 }
 }
 
-int main()
+void UpdateDrawFrame()
 {
-    InitWindow(1000, 700, "C++ Collision Playground");
-    SetTargetFPS(60);
-
     const Arena arena{40.0f, 130.0f, 960.0f, 660.0f};
-    std::vector<Body> bodies = MakeInitialScene();
+    static std::vector<Body> bodies = MakeInitialScene();
     const Color colors[]{SKYBLUE, ORANGE, LIME, PINK};
     constexpr double fixedDt = 1.0 / 120.0;
     constexpr int maxStepsPerFrame = 8;
-    double accumulator = 0.0;
-    bool paused = false;
-    bool gravityEnabled = false;
-    bool debugEnabled = false;
-    std::size_t spawnIndex = 0;
-    std::vector<Contact> contacts;
-    const char* feedback = nullptr;
-    float feedbackRemaining = 0.0f;
+    static double accumulator = 0.0;
+    static bool paused = false;
+    static bool gravityEnabled = false;
+    static bool debugEnabled = false;
+    static std::size_t spawnIndex = 0;
+    static std::vector<Contact> contacts;
+    static const char* feedback = nullptr;
+    static float feedbackRemaining = 0.0f;
 
-    while (!WindowShouldClose())
+    const float frameTime = GetFrameTime();
+    feedbackRemaining = std::max(0.0f, feedbackRemaining - frameTime);
+    bool skipSimulation = false;
+
+    // Reset wins over other input on this frame, so its scene is drawn intact.
+    if (IsKeyPressed(KEY_R))
     {
-        const float frameTime = GetFrameTime();
-        feedbackRemaining = std::max(0.0f, feedbackRemaining - frameTime);
-        bool skipSimulation = false;
-
-        // Reset wins over other input on this frame, so its scene is drawn intact.
-        if (IsKeyPressed(KEY_R))
+        bodies = MakeInitialScene();
+        accumulator = 0.0;
+        contacts.clear();
+        spawnIndex = 0;
+        feedback = nullptr;
+        feedbackRemaining = 0.0f;
+        gravityEnabled = false;
+        debugEnabled = false;
+        paused = false;
+        skipSimulation = true;
+    }
+    else
+    {
+        if (IsKeyPressed(KEY_P))
         {
-            bodies = MakeInitialScene();
+            paused = !paused;
             accumulator = 0.0;
+            skipSimulation = true; // Neither transition consumes this frame's time.
+        }
+        if (IsKeyPressed(KEY_G)) gravityEnabled = !gravityEnabled;
+        if (IsKeyPressed(KEY_C))
+        {
+            debugEnabled = !debugEnabled;
             contacts.clear();
-            spawnIndex = 0;
-            feedback = nullptr;
-            feedbackRemaining = 0.0f;
-            gravityEnabled = false;
-            debugEnabled = false;
-            paused = false;
-            skipSimulation = true;
         }
-        else
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
         {
-            if (IsKeyPressed(KEY_P))
-            {
-                paused = !paused;
-                accumulator = 0.0;
-                skipSimulation = true; // Neither transition consumes this frame's time.
-            }
-            if (IsKeyPressed(KEY_G)) gravityEnabled = !gravityEnabled;
-            if (IsKeyPressed(KEY_C))
-            {
-                debugEnabled = !debugEnabled;
-                contacts.clear();
-            }
-            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-            {
-                const Vector2 mouse = GetMousePosition();
-                feedback = TrySpawn(bodies, {mouse.x, mouse.y}, arena, spawnIndex);
-                feedbackRemaining = feedback ? feedbackDuration : 0.0f;
-            }
+            const Vector2 mouse = GetMousePosition();
+            feedback = TrySpawn(bodies, {mouse.x, mouse.y}, arena, spawnIndex);
+            feedbackRemaining = feedback ? feedbackDuration : 0.0f;
         }
-
-        if (!paused && !skipSimulation)
-        {
-            accumulator += frameTime;
-            int steps = 0;
-            const Vec2 acceleration = gravityEnabled ? gravityAcceleration : Vec2{0, 0};
-            while (accumulator >= fixedDt && steps < maxStepsPerFrame)
-            {
-                UpdatePhysics(bodies, arena, radius, static_cast<float>(fixedDt),
-                              acceleration, debugEnabled ? &contacts : nullptr);
-                accumulator -= fixedDt;
-                ++steps;
-            }
-            if (steps == maxStepsPerFrame)
-            {
-                // Drop overdue whole steps, retaining only the fractional remainder.
-                accumulator = std::fmod(accumulator, fixedDt);
-            }
-        }
-
-        BeginDrawing();
-        ClearBackground(Color{24, 28, 36, 255});
-        DrawText("C++ Collision Playground", 40, 16, 30, RAYWHITE);
-        DrawText("Stage 4 | Click: spawn   P: pause   R: reset   G: gravity   C: debug   Esc: exit",
-                 40, 54, 18, LIGHTGRAY);
-        DrawText(TextFormat("%s   |   Gravity: %s   |   Debug: %s   |   Circles: %i / %i",
-                            paused ? "PAUSED" : "RUNNING", gravityEnabled ? "ON" : "OFF",
-                            debugEnabled ? "ON" : "OFF", static_cast<int>(bodies.size()),
-                            static_cast<int>(maxBodies)), 40, 80, 18, RAYWHITE);
-        if (feedback && feedbackRemaining > 0.0f)
-            DrawText(feedback, 40, 106, 16, ORANGE);
-        DrawRectangleLinesEx(
-            Rectangle{arena.left, arena.top, arena.right - arena.left,
-                      arena.bottom - arena.top}, 2.0f, LIGHTGRAY);
-        for (std::size_t i = 0; i < bodies.size(); ++i)
-        {
-            const Vec2& position = bodies[i].position;
-            DrawCircleV({position.x, position.y}, radius, colors[i % std::size(colors)]);
-        }
-        if (debugEnabled)
-        {
-            BeginScissorMode(static_cast<int>(arena.left), static_cast<int>(arena.top),
-                             static_cast<int>(arena.right - arena.left),
-                             static_cast<int>(arena.bottom - arena.top));
-            for (const Body& body : bodies)
-                DrawArrow(body.position, body.velocity * velocityArrowScale, RAYWHITE);
-            for (const Contact& contact : contacts)
-            {
-                DrawCircleV({contact.position.x, contact.position.y}, 3.0f, YELLOW);
-                DrawArrow(contact.position, contact.normal * contactArrowLength, YELLOW);
-            }
-            EndScissorMode();
-            DrawText("White: velocity   Yellow: sampled normals from the last physics step",
-                     40, 675, 16, LIGHTGRAY);
-        }
-        EndDrawing();
     }
 
+    if (!paused && !skipSimulation)
+    {
+        accumulator += frameTime;
+        int steps = 0;
+        const Vec2 acceleration = gravityEnabled ? gravityAcceleration : Vec2{0, 0};
+        while (accumulator >= fixedDt && steps < maxStepsPerFrame)
+        {
+            UpdatePhysics(bodies, arena, radius, static_cast<float>(fixedDt),
+                          acceleration, debugEnabled ? &contacts : nullptr);
+            accumulator -= fixedDt;
+            ++steps;
+        }
+        if (steps == maxStepsPerFrame)
+        {
+            // Drop overdue whole steps, retaining only the fractional remainder.
+            accumulator = std::fmod(accumulator, fixedDt);
+        }
+    }
+
+    BeginDrawing();
+    ClearBackground(Color{24, 28, 36, 255});
+    DrawText("C++ Collision Playground", 40, 16, 30, RAYWHITE);
+    DrawText("Click: spawn   P: pause   R: reset   G: gravity   C: debug",
+             40, 54, 18, LIGHTGRAY);
+    DrawText(TextFormat("%s   |   Gravity: %s   |   Debug: %s   |   Circles: %i / %i",
+                        paused ? "PAUSED" : "RUNNING", gravityEnabled ? "ON" : "OFF",
+                        debugEnabled ? "ON" : "OFF", static_cast<int>(bodies.size()),
+                        static_cast<int>(maxBodies)), 40, 80, 18, RAYWHITE);
+    if (feedback && feedbackRemaining > 0.0f)
+        DrawText(feedback, 40, 106, 16, ORANGE);
+    DrawRectangleLinesEx(
+        Rectangle{arena.left, arena.top, arena.right - arena.left,
+                  arena.bottom - arena.top}, 2.0f, LIGHTGRAY);
+    for (std::size_t i = 0; i < bodies.size(); ++i)
+    {
+        const Vec2& position = bodies[i].position;
+        DrawCircleV({position.x, position.y}, radius, colors[i % std::size(colors)]);
+    }
+    if (debugEnabled)
+    {
+        BeginScissorMode(static_cast<int>(arena.left), static_cast<int>(arena.top),
+                         static_cast<int>(arena.right - arena.left),
+                         static_cast<int>(arena.bottom - arena.top));
+        for (const Body& body : bodies)
+            DrawArrow(body.position, body.velocity * velocityArrowScale, RAYWHITE);
+        for (const Contact& contact : contacts)
+        {
+            DrawCircleV({contact.position.x, contact.position.y}, 3.0f, YELLOW);
+            DrawArrow(contact.position, contact.normal * contactArrowLength, YELLOW);
+        }
+        EndScissorMode();
+        DrawText("White: velocity   Yellow: sampled normals from the last physics step",
+                 40, 675, 16, LIGHTGRAY);
+    }
+    EndDrawing();
+}
+
+int main()
+{
+    InitWindow(1000, 700, "C++ Collision Playground");
+#if defined(__EMSCRIPTEN__)
+    // The browser schedules frames; a blocking loop would freeze the page.
+    emscripten_set_main_loop(UpdateDrawFrame, 0, 1);
+#else
+    SetTargetFPS(60);
+    while (!WindowShouldClose()) UpdateDrawFrame();
     CloseWindow();
+#endif
     return 0;
 }

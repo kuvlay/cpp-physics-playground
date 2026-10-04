@@ -18,3 +18,16 @@ FetchContent_MakeAvailable(raylib)
 
 add_executable(collision_playground src/main.cpp src/physics.cpp)
 target_link_libraries(collision_playground PRIVATE raylib)
+
+if(EMSCRIPTEN)
+    set_target_properties(collision_playground PROPERTIES
+        OUTPUT_NAME "index" SUFFIX ".html"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/site")
+    target_link_options(collision_playground PRIVATE
+        "--shell-file=${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html"
+        "-sALLOW_MEMORY_GROWTH=1"
+        "-sGL_ENABLE_GET_PROC_ADDRESS=1"
+        "-sASSERTIONS=1")
+    set_property(TARGET collision_playground APPEND PROPERTY
+        LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html")
+endif()

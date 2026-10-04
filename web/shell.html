@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An interactive C++ physics demo: spawn circles, toggle gravity, and inspect collisions. Runs in your browser with WebAssembly.">
+  <title>C++ 2D Physics & Collision Playground</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #10141c; color: #edf1f7; }
+    body { max-width: 1040px; margin: 0 auto; padding: 24px 16px; }
+    header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    h1 { font-size: clamp(22px, 4vw, 30px); margin: 0; }
+    p { color: #b2bdce; line-height: 1.6; }
+    a { color: #81d4fa; }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 10 / 7; background: #181c24; border-radius: 8px; outline: 1px solid #344052; touch-action: none; }
+    canvas:focus-visible { outline: 2px solid #81d4fa; }
+    #status { min-height: 1.6em; }
+    footer { font-size: 14px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Physics & Collision Playground</h1>
+    <a href="https://github.com/aarish-io/cpp-physics-playground" target="_blank" rel="noopener noreferrer">View C++ source ↗</a>
+  </header>
+  <p>Spawn circles, turn on gravity, and explore collisions. Best experienced with a keyboard and mouse.</p>
+  <p id="status" role="status">Loading simulation…</p>
+  <canvas id="canvas" width="1000" height="700" tabindex="0" aria-label="Interactive circle simulation. Click to spawn. P pauses, R resets, G toggles gravity, C toggles debug arrows."></canvas>
+  <footer>
+    <p>Click inside the arena to spawn · <b>P</b> pause · <b>R</b> reset · <b>G</b> gravity · <b>C</b> debug</p>
+    <p>C++17 · raylib · WebAssembly. Equal-mass circles, fixed 120 Hz physics, and elastic collisions. A small simulation demo with discrete collision detection; dense scenes may show overlaps or jitter.</p>
+  </footer>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const status = document.getElementById('status');
+    canvas.addEventListener('pointerdown', () => canvas.focus());
+    canvas.addEventListener('contextmenu', event => event.preventDefault());
+    canvas.addEventListener('webglcontextlost', event => {
+      event.preventDefault();
+      status.textContent = 'Graphics context lost. Reload the page to restart.';
+    });
+    var Module = {
+      canvas,
+      print: (...args) => console.log(...args),
+      printErr: (...args) => console.error(...args),
+      onRuntimeInitialized: () => { status.textContent = 'Ready — click the arena to interact.'; },
+      onAbort: () => { status.textContent = 'Unable to start the simulation. Try reloading in a WebGL-enabled browser.'; }
+    };
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>
