@@ -1,43 +1,56 @@
-# C++ 2D Physics & Collision Playground
+<div align="center">
 
-An interactive 2D simulation built with **C++17, raylib 5.5, and CMake**. Spawn circles, toggle gravity, and inspect how velocity and contact normals change as objects collide inside a bounded arena.
+# C++ Physics Playground
 
-**[Play the browser demo](https://aarish-io.github.io/cpp-physics-playground/)** · [Source code](https://github.com/aarish-io/cpp-physics-playground)
+**Spawn circles. Toggle gravity. See collision response in motion.**
 
-The browser demo runs the same C++ physics code through WebAssembly. Use a desktop browser with a keyboard and mouse; no download or account is needed.
+`C++17` · `raylib 5.5` · `Fixed-step physics` · `WebAssembly` · `CMake`
 
-The project implements its own circle collision detection and response. raylib provides the window, input, and rendering; the physics code runs independently and can be tested without opening a window.
+[Controls](#controls) · [Desktop build](#desktop-build) · [How it works](#how-it-works) · [Browser build](#browser-build)
 
-## Features
+Maintained by [Kuvlay Naman](https://github.com/kuvlay)
 
-- Fixed 120 Hz physics timestep, separate from rendering, with bounded catch-up work.
-- Equal-mass circle collisions using distance checks, overlap correction, and frictionless elastic impulse response.
-- Radius-aware wall and corner bounces.
-- Optional gravity using semi-implicit Euler integration.
-- Interactive spawning with boundary checks, overlap rejection, and an 80-circle limit.
-- Pause/resume, scene reset, and visual debugging with velocity arrows and sampled contact normals.
-- Assertion-based checks for motion, collisions, conservation properties, gravity, and crowded simulations.
+</div>
+
+---
+
+An interactive 2D arena for exploring circle collisions, velocity and contact normals. The project implements collision detection and response in C++; raylib provides the window, input and drawing. The physics module is independent of rendering and can be checked without opening a window.
+
+## At a glance
+
+| Simulation | Interaction | Visualization |
+| --- | --- | --- |
+| Fixed 120 Hz physics timestep | Spawn circles with the mouse | Velocity arrows |
+| Equal-mass elastic circle collisions | Toggle gravity and pause | Sampled contact normals |
+| Radius-aware wall and corner bounces | Reset to a four-circle scene | Native window or WebAssembly canvas |
+
+The arena supports up to **80 circles**. These are implementation settings, not measured performance guarantees.
 
 ## Controls
 
 | Input | Action |
 | --- | --- |
-| Left click | Spawn a circle in an unoccupied space inside the arena |
-| P | Pause or resume physics |
-| R | Restore the original four circles and default settings |
-| G | Toggle gravity |
-| C | Toggle velocity arrows and contact normals |
-| Escape | Close the application |
+| Left click | Spawn a circle in free space inside the arena |
+| `P` | Pause or resume the simulation |
+| `R` | Reset the scene and settings |
+| `G` | Toggle gravity |
+| `C` | Toggle velocity arrows and contact normals |
+| `Escape` | Close the desktop application |
 
-Spawning also works while paused. White arrows show velocity; yellow arrows show contacts sampled during the most recent physics step. A contact may disappear before a rendered frame if another physics step has already cleared the sample.
+Spawning works while paused. White arrows show velocity, and yellow arrows show contacts sampled during the most recent physics step. Close the browser tab to exit the web version.
 
-## Build and run
+## Desktop build
 
-### Windows
+**Requirements:** C/C++ compiler with C++17 support, CMake 3.24+, Ninja and Git. CMake downloads the pinned raylib 5.5 dependency on first configuration.
 
-Requirements: a C/C++ compiler supporting C++17, CMake 3.24 or newer, Ninja, and Git. The first configuration downloads raylib 5.5; no separate raylib installation is needed.
+```bash
+git clone https://github.com/kuvlay/cpp-physics-playground.git
+cd cpp-physics-playground
+```
 
-From the repository root in PowerShell, with GCC/G++, CMake, Ninja, and Git on PATH:
+### Windows · PowerShell
+
+With GCC/G++, CMake, Ninja and Git on `PATH`:
 
 ```powershell
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
@@ -45,100 +58,88 @@ cmake --build build
 .\build\collision_playground.exe
 ```
 
-For a MinGW installation at `C:\mingw64`, add its tools to the current session first if necessary:
-
-```powershell
-$env:Path = 'C:\mingw64\bin;C:\Program Files\Git\cmd;' + $env:Path
-```
-
-Keep the MinGW runtime DLLs available on PATH when running the executable. Close the application before rebuilding it.
+Keep the MinGW runtime DLLs available on `PATH` and close the running application before rebuilding.
 
 ### Linux / WSL
 
-Use a separate build directory; Windows and Linux build caches are not interchangeable. Linux requires raylib's desktop graphics development dependencies, and WSL needs a graphical session such as WSLg to display the window. See the [raylib Linux setup guide](https://github.com/raysan5/raylib/wiki/Working-on-GNU-Linux) for dependencies.
+Install [raylib's desktop graphics dependencies](https://github.com/raysan5/raylib/wiki/Working-on-GNU-Linux). WSL needs a graphical session such as WSLg.
 
 ```bash
-cmake -S . -B build-wsl -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
-cmake --build build-wsl
-./build-wsl/collision_playground
+cmake -S . -B build-linux -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build build-linux
+./build-linux/collision_playground
 ```
 
-The current verification was performed with the native Windows build.
+Use separate build directories for different operating systems and compilers.
 
 ## How it works
 
-```text
-Input -> application state -> fixed physics updates -> render
-                                  |
-                                  v
-                      Apply acceleration and move
-                                  |
-                           Resolve walls
-                                  |
-                      Detect and resolve circle pairs
-                                  |
-                        Resolve walls again
+```mermaid
+flowchart TD
+    I[Keyboard and mouse input] --> A[Application state]
+    A --> T[Accumulate frame time]
+    T --> U[Run fixed 1/120-second steps]
+    U --> M[Apply gravity and integrate motion]
+    M --> W[Resolve wall contacts]
+    W --> C[Detect and resolve circle pairs]
+    C --> R[Resolve walls again]
+    R --> D[Draw circles and debug vectors]
 ```
 
-Each body stores position and velocity. The simulation uses a shared radius of 25 pixels and implicit unit mass. Positions are measured in pixels, velocity in pixels/second, and acceleration in pixels/second squared.
+Each body has position and velocity. All circles use a 25-pixel radius and implicit unit mass. Motion uses semi-implicit Euler integration. The application performs at most eight physics updates per rendered frame, then drops overdue whole steps to keep catch-up work bounded.
 
-Elapsed frame time accumulates until a 1/120-second physics update is due. The application performs at most eight updates per rendered frame, then discards overdue whole steps to prevent unbounded catch-up work. Rendering targets 60 FPS; this is a pacing target, not a measured performance guarantee.
+Circle pairs are tested with squared distance. Overlap correction separates the pair along its contact normal. When the pair is approaching, an impulse changes the normal velocity while preserving tangential motion. Restitution is 1 for isolated elastic collisions. The pair loop checks every unique pair and has **O(n²)** cost.
 
-For each circle pair, a squared-distance test detects contact. Overlapping circles move apart equally along the contact normal. An impulse changes their normal velocities only when they are approaching; tangential velocity is preserved. Restitution is 1, so isolated collisions are elastic. The pair loop checks each unique pair once and has O(n²) cost.
+Rendering targets 60 FPS independently of the 120 Hz physics step. Contact arrows show only the most recent physics sample, so very brief contacts may not appear in a rendered frame.
 
-## Project layout
+## Browser build
+
+Activate [Emscripten](https://emscripten.org/docs/getting_started/downloads.html) 3.1.74, then run from the repository root:
+
+```bash
+emcmake cmake -S . -B build-web -DPLATFORM=Web -DCMAKE_BUILD_TYPE=Release
+cmake --build build-web --parallel 2
+python3 -m http.server 8000 --directory build-web/site
+```
+
+Open **http://localhost:8000** with a keyboard and mouse. Serve the full `build-web/site` directory, including HTML, JavaScript and WebAssembly; opening the HTML file directly does not provide a working module server.
+
+The browser uses the same physics code. Emscripten schedules `UpdateDrawFrame` through the browser event loop. The included GitHub Actions workflow runs physics checks, builds the WebAssembly output and deploys it when the repository's Pages source is configured as **GitHub Actions**.
+
+## Physics checks
+
+These checks do not depend on raylib or a graphical display:
+
+```bash
+mkdir -p build-checks
+c++ -std=c++17 -O2 -Wall -Wextra -Wpedantic -Isrc \
+  tests/physics_checks.cpp src/physics.cpp -o build-checks/physics_checks
+./build-checks/physics_checks
+```
+
+The existing headless checks were compiled and run during this documentation update; they completed with `Stage 4 physics checks passed.` This verifies the physics assertions, not the desktop UI or browser deployment.
+
+Coverage includes wall/corner bounces, head-on and glancing contacts, momentum and kinetic energy for isolated elastic pairs, separating overlaps, coincident centers, gravity and contact sampling. The stress checks use 80 circles over 7,200 steps with gravity off and on. Keep assertions enabled: the test source rejects `NDEBUG` builds.
+
+## Code map
 
 | File | Responsibility |
 | --- | --- |
-| `src/main.cpp` | Input, spawning, application state, timestep accumulator, and drawing |
-| `src/physics.h` | Vector operations, body/arena/contact data, and physics interface |
-| `src/physics.cpp` | Integration, wall handling, and circle collision response |
-| `tests/physics_checks.cpp` | Standalone physics assertions and stress checks |
-| `CMakeLists.txt` | C++17 build and pinned raylib dependency |
-| `web/shell.html` | Browser page and WebAssembly loading state |
-| `.github/workflows/deploy-demo.yml` | Physics checks, browser build, and GitHub Pages deployment |
+| `src/main.cpp` | Input, spawning, timestep accumulator and rendering |
+| `src/physics.h` | Vector, body, arena and contact types |
+| `src/physics.cpp` | Integration and collision response |
+| `tests/physics_checks.cpp` | Standalone assertions and stress checks |
+| `CMakeLists.txt` | Native/WebAssembly build and pinned raylib dependency |
+| `web/shell.html` | Browser canvas and loading/error states |
+| `.github/workflows/deploy-demo.yml` | Checks, browser build and Pages deployment |
 
-## Browser build and deployment
+## Current scope
 
-Install and activate [Emscripten](https://emscripten.org/docs/getting_started/downloads.html) 3.1.74, then run from a terminal with its environment loaded:
+Discrete detection can miss fast contacts between steps. A single contact pass can leave overlap or jitter in dense groups; stable stacking is not implemented. Circles share mass and radius, with no friction, rotation or damping. The project has no spatial partitioning or measured FPS dashboard.
 
-```sh
-emcmake cmake -S . -B build-web -DPLATFORM=Web -DCMAKE_BUILD_TYPE=Release
-cmake --build build-web --parallel 2
-python -m http.server 8000 --directory build-web/site
-```
+<details>
+<summary>Libraries and credits</summary>
 
-Open `http://localhost:8000`; opening the HTML file directly does not serve the WebAssembly module correctly. Deploy the complete `build-web/site` directory, including the HTML, JavaScript, and `.wasm` files.
+[raylib](https://github.com/raysan5/raylib) supplies rendering and input; [Emscripten](https://emscripten.org/) supplies the WebAssembly toolchain. Existing development history and third-party notices are retained in their respective sources.
 
-GitHub Actions runs the physics checks, builds with the pinned Emscripten version, and deploys to GitHub Pages on pushes to `main`. The repository's Pages source must be set to **GitHub Actions**. No backend or API keys are needed.
-
-Desktop builds call `UpdateDrawFrame` from the normal loop. Browser builds register that same function with Emscripten so the browser can schedule frames without being blocked by an infinite loop. The fixed physics timestep remains unchanged. Close the browser tab to exit the web demo.
-
-## Tests
-
-From the repository root on Windows:
-
-```powershell
-g++ -std=c++17 -O2 -Wall -Wextra -Wpedantic -Isrc tests/physics_checks.cpp src/physics.cpp -o build/physics_checks.exe
-.\build\physics_checks.exe
-```
-
-On Linux, use the same compiler command with `-o build-wsl/physics_checks`, then run `./build-wsl/physics_checks`.
-
-Do not define `NDEBUG`: these checks require assertions. The test source rejects builds that disable them.
-
-The checks cover wall/corner bounces, head-on and glancing collisions, momentum and kinetic energy for isolated elastic pairs, separating overlaps, coincident centers, gravity, and debug-contact sampling. A stress check runs 80 circles for 7,200 steps with gravity off and again with gravity on, checking finite values, arena bounds, and unchanged physics results when contact recording is enabled. These are correctness checks, not performance benchmarks or automated UI tests.
-
-## VS Code setup
-
-CMake exports `compile_commands.json` so IntelliSense can use the same flags and include paths as the compiler. The checked-in configuration uses `build/` with the Windows `Win32` configuration and `build-wsl/` with the `Linux` configuration in a WSL window. Adjust the compiler path if your compiler is installed elsewhere.
-
-After configuring CMake, save all editor files. If old diagnostics remain, run **C/C++: Reset IntelliSense Database** from the Command Palette, followed by **Developer: Reload Window**. Check that the active configuration matches the environment where VS Code is running.
-
-## Limitations
-
-- Discrete collision detection can miss fast-moving contacts between steps.
-- A single contact pass can leave overlaps or jitter in dense groups; stable stacking is not implemented.
-- Circles share mass and radius. There is no friction, rotation, or damping.
-- Contact arrows show the last physics step rather than a persistent collision history.
-- No spatial partitioning, FPS profiling dashboard, or performance optimization claims are included.
+</details>

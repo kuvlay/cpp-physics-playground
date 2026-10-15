@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="An interactive C++ physics demo: spawn circles, toggle gravity, and inspect collisions. Runs in your browser with WebAssembly.">
-  <title>C++ 2D Physics & Collision Playground</title>
+  <title>C++ Physics Playground | Kuvlay Naman</title>
   <link rel="icon" href="data:,">
   <style>
     :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #10141c; color: #edf1f7; }
@@ -22,14 +22,14 @@
 <body>
   <header>
     <h1>Physics & Collision Playground</h1>
-    <a href="https://github.com/aarish-io/cpp-physics-playground" target="_blank" rel="noopener noreferrer">View C++ source ↗</a>
+    <a href="https://github.com/kuvlay/cpp-physics-playground" target="_blank" rel="noopener noreferrer">View C++ source ↗</a>
   </header>
   <p>Spawn circles, turn on gravity, and explore collisions. Best experienced with a keyboard and mouse.</p>
   <p id="status" role="status">Loading simulation…</p>
   <canvas id="canvas" width="1000" height="700" tabindex="0" aria-label="Interactive circle simulation. Click to spawn. P pauses, R resets, G toggles gravity, C toggles debug arrows."></canvas>
   <footer>
     <p>Click inside the arena to spawn · <b>P</b> pause · <b>R</b> reset · <b>G</b> gravity · <b>C</b> debug</p>
-    <p>C++17 · raylib · WebAssembly. Equal-mass circles, fixed 120 Hz physics, and elastic collisions. A small simulation demo with discrete collision detection; dense scenes may show overlaps or jitter.</p>
+    <p>Kuvlay Naman · C++17 · raylib · WebAssembly. Equal-mass circles, fixed 120 Hz physics, and elastic collisions. A small simulation demo with discrete collision detection; dense scenes may show overlaps or jitter.</p>
   </footer>
   <script>
     const canvas = document.getElementById('canvas');
