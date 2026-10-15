@@ -6,7 +6,7 @@
 
 `C++17` · `raylib 5.5` · `Fixed-step physics` · `WebAssembly` · `CMake`
 
-[Controls](#controls) · [Desktop build](#desktop-build) · [How it works](#how-it-works) · [Browser build](#browser-build)
+[Play live demo](https://kuvlay.github.io/cpp-physics-playground/) · [Controls](#controls) · [Desktop build](#desktop-build) · [How it works](#how-it-works) · [Browser build](#browser-build)
 
 Maintained by [Kuvlay Naman](https://github.com/kuvlay)
 
@@ -93,6 +93,8 @@ Circle pairs are tested with squared distance. Overlap correction separates the 
 Rendering targets 60 FPS independently of the 120 Hz physics step. Contact arrows show only the most recent physics sample, so very brief contacts may not appear in a rendered frame.
 
 ## Browser build
+
+The [live WebAssembly demo](https://kuvlay.github.io/cpp-physics-playground/) is hosted on GitHub Pages. The deployment and a gravity-toggle interaction have been verified in the browser.
 
 Activate [Emscripten](https://emscripten.org/docs/getting_started/downloads.html) 3.1.74, then run from the repository root:
 
